@@ -1,0 +1,100 @@
+server:
+  address: ${APP_HOST:0.0.0.0}
+  port: ${APP_PORT:8080}
+spring:
+  main:
+    banner-mode: OFF
+  sql:
+    init:
+      mode: never
+  jackson:
+    time-zone: UTC
+
+  # ================== DATASOURCE ==================
+  datasource:
+    username: ${DATABASE_USERNAME:login_processing_user}
+    password: ${DATABASE_PASSWORD:login_processing_password}
+    url: jdbc:postgresql://${POSTGRESQL_HOST:localhost}:${POSTGRESQL_PORT:5432}/${DATABASE_NAME:login_processing_db}
+    driver-class-name: org.postgresql.Driver
+  data:
+    jpa:
+      repositories:
+        enabled: true
+
+  # ================== JPA ==================
+  jpa:
+    database: POSTGRESQL
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    defer-datasource-initialization: false
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    properties:
+      javax:
+        persistence:
+          create-database-schemas: true
+      hibernate:
+        generate_statistics: true
+        format_sql: true
+      naming-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
+      default_schema: ${DATABASE_SCHEMA:login_processing}
+      properties:
+        hibernate:
+          jdbc:
+            time_zone: UTC
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: login-processing-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.codechallenge"
+        spring.json.value.default.type: "com.codechallenge.messaging.CustomerLoginEvent"
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+
+# ================== LOGGING ==================
+logging:
+  level:
+    root: INFO
+    org.flywaydb: INFO
+    org.apache.kafka: INFO
+
+# ================== FLYWAY ==================
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    default-schema: ${DATABASE_SCHEMA:login_processing}
+    schemas: ${DATABASE_SCHEMA:login_processing}
+    create-schemas: true
+    validate-on-migrate: true
+    clean-disabled: true
+
+# ================== APP CONFIG ==================
+app:
+  kafka:
+    topic:
+      input: customer-login
+      output: login-tracking-result
+
+  tracking:
+    base-url: https://customer-tracking-service
+    username: tracking_user
+    password: tracking_password
+
+  # ================== RESILIENCE4J ==================
+  resilience4j:
+    retry:
+      instances:
+        trackingClient:
+          max-attempts: 3
+          wait-duration: 200ms
+          retry-exceptions:
+            - org.springframework.web.reactive.function.client.WebClientResponseException
+            - java.io.IOException
