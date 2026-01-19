@@ -41,6 +41,7 @@ spring:
     create-schemas: true
     validate-on-migrate: true
     clean-disabled: true
+    baseline-on-migrate: true
 
   # ================== KAFKA ==================
   kafka:

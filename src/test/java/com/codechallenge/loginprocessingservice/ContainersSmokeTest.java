@@ -1,6 +1,5 @@
-package com.codechallenge.loginprocessingservice.integrationtest;
+package com.codechallenge.loginprocessingservice;
 
-import com.codechallenge.loginprocessingservice.AbstractTest;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;

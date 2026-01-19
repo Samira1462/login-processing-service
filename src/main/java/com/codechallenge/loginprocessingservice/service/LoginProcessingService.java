@@ -5,7 +5,7 @@ import com.codechallenge.loginprocessingservice.dto.LoginTrackingResultEvent;
 import com.codechallenge.loginprocessingservice.integration.CustomerTrackingClient;
 import com.codechallenge.loginprocessingservice.model.*;
 import com.codechallenge.loginprocessingservice.repository.LoginTrackingResultRepository;
-import com.codechallenge.loginprocessingservice.repository.OutboxEventRepository;
+import com.codechallenge.loginprocessingservice.repository.EventPublicationRepository;
 import io.github.resilience4j.retry.Retry;
 
 import io.github.resilience4j.retry.RetryRegistry;
@@ -28,16 +28,16 @@ public class LoginProcessingService {
 
     private final CustomerTrackingClient customerTrackingClient;
     private final LoginTrackingResultRepository resultRepository;
-    private final OutboxEventRepository outboxRepository;
-    private final OutboxPayloadSerializer payloadSerializer;
+    private final EventPublicationRepository outboxRepository;
+    private final IntegrationEventSerializer payloadSerializer;
 
     private final String outputTopic;
     private final Retry customerTrackingRetry;
 
     public LoginProcessingService(CustomerTrackingClient customerTrackingClient,
                                   LoginTrackingResultRepository resultRepository,
-                                  OutboxEventRepository outboxRepository,
-                                  OutboxPayloadSerializer payloadSerializer,
+                                  EventPublicationRepository outboxRepository,
+                                  IntegrationEventSerializer payloadSerializer,
                                   RetryRegistry retryRegistry,
                                   @Value("${app.kafka.topic.output}") String outputTopic) {
         this.customerTrackingClient = customerTrackingClient;
@@ -51,17 +51,19 @@ public class LoginProcessingService {
 
     @Transactional
     public LoginTrackingResultEvent process(CustomerLoginEvent event) {
-        logger.info("Processing login event messageId={} customerId={}", event.messageId(), event.customerId());
+        logger.info("[DEBUG_LOG] Processing login event messageId={} customerId={}", event.messageId(), event.customerId());
 
         var existing = resultRepository.findByMessageId(event.messageId());
         if (existing.isPresent()) {
-            logger.info("Duplicate message detected. Skipping processing. messageId={}", event.messageId());
+            logger.info("[DEBUG_LOG] Duplicate message detected. Skipping processing. messageId={}", event.messageId());
             return toEvent(existing.get());
         }
 
         RequestResult requestResult = executeCustomerTrackingService(event);
+        logger.info("[DEBUG_LOG] RequestResult for messageId={}: {}", event.messageId(), requestResult);
 
         LoginTrackingResultEntity saved = persistResult(event, requestResult);
+        logger.info("[DEBUG_LOG] Saved entity for messageId={} with id={}", event.messageId(), saved.getId());
 
         writeOutbox(saved);
 
@@ -100,10 +102,10 @@ public class LoginProcessingService {
         LoginTrackingResultEvent outEvent = toEvent(saved);
         byte[] payload = payloadSerializer.serialize(outEvent);
 
-        OutboxEventEntity outbox = OutboxEventEntity.newEvent(
+        EventPublicationEntity outbox = EventPublicationEntity.newEvent(
                 AggregateType.LOGIN_TRACKING_RESULT,
                 saved.getId(),
-                OutboxEventType.LOGIN_TRACKING_RESULT_CREATED,
+                IntegrationEventType.LOGIN_TRACKING_RESULT_CREATED,
                 outputTopic,
                 saved.getCustomerId().toString(), // key
                 payload
@@ -113,7 +115,7 @@ public class LoginProcessingService {
             outboxRepository.save(outbox);
         } catch (DataIntegrityViolationException dup) {
             logger.info("Outbox duplicate ignored. aggregateId={} eventType={}",
-                    saved.getId(), OutboxEventType.LOGIN_TRACKING_RESULT_CREATED);
+                    saved.getId(), IntegrationEventType.LOGIN_TRACKING_RESULT_CREATED);
         }
     }
 

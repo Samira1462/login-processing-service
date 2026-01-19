@@ -16,6 +16,7 @@ import java.time.Duration;
 public class RestClientConfig {
 
     private final Logger logger = LoggerFactory.getLogger(RestClientConfig.class.getName());
+
     @Bean
     @Qualifier("customerTrackingRestClient")
     public RestClient customerTrackingRestClient(

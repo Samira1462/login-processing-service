@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.listener.ContainerProperties;
 
@@ -26,7 +27,7 @@ public class KafkaConsumerConfig {
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent");
 
         ConsumerFactory<String, CustomerLoginEvent> cf =
-                new org.springframework.kafka.core.DefaultKafkaConsumerFactory<>(
+                new DefaultKafkaConsumerFactory<>(
                         props,
                         new StringDeserializer(),
                         new JsonDeserializer<>(CustomerLoginEvent.class, false)

@@ -1,7 +1,10 @@
 package com.codechallenge.loginprocessingservice;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -13,9 +16,12 @@ import org.wiremock.integrations.testcontainers.WireMockContainer;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@ActiveProfiles("it")
 @Testcontainers
 @SpringBootTest
 public abstract class AbstractTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractTest.class.getName());
 
     @Container
     protected static final WireMockContainer wireMockContainer =
@@ -38,9 +44,9 @@ public abstract class AbstractTest {
         assertTrue(kafkaContainer.isRunning(), "KafkaContainer is not running");
         assertTrue(postgresContainer.isRunning(), "PostgresContainer is not running");
 
-        System.out.println("WireMock:  " + wireMockContainer.getBaseUrl());
-        System.out.println("Kafka:     " + kafkaContainer.getBootstrapServers());
-        System.out.println("Postgres:  " + postgresContainer.getJdbcUrl());
+        logger.info("WireMock:  {}", wireMockContainer.getBaseUrl());
+        logger.info("Kafka:     {}", kafkaContainer.getBootstrapServers());
+        logger.info("Postgres:  {}", postgresContainer.getJdbcUrl());
     }
 
     @DynamicPropertySource

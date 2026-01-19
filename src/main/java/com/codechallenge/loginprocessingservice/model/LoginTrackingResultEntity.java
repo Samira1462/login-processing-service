@@ -102,10 +102,6 @@ public class LoginTrackingResultEntity {
         this.eventTimestamp = eventTimestamp;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public String getCustomerIp() {
         return customerIp;
     }
@@ -120,6 +116,10 @@ public class LoginTrackingResultEntity {
 
     public void setRequestResult(RequestResult requestResult) {
         this.requestResult = requestResult;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Instant getCreatedAt() {

@@ -20,5 +20,8 @@ app:
 logging:
   level:
     root: INFO
+    com.codechallenge.loginprocessingservice: DEBUG
     org.apache.kafka: WARN
+    org.springframework.kafka: INFO
+    org.springframework.test.context: INFO
     io.github.resilience4j.retry: WARN

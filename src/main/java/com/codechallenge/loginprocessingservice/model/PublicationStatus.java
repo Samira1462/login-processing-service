@@ -1,6 +1,6 @@
 package com.codechallenge.loginprocessingservice.model;
 
-public enum OutboxStatus {
+public enum PublicationStatus {
     NEW,
     SENT,
     FAILED

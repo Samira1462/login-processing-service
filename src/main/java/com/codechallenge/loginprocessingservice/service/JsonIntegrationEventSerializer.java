@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JsonOutboxPayloadSerializer implements OutboxPayloadSerializer{
+public class JsonIntegrationEventSerializer implements IntegrationEventSerializer {
 
     private final ObjectMapper objectMapper;
-    public JsonOutboxPayloadSerializer(ObjectMapper objectMapper) {
+    public JsonIntegrationEventSerializer(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 

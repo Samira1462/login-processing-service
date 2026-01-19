@@ -1,7 +1,9 @@
-package com.codechallenge.loginprocessingservice.integration;
+package com.codechallenge.loginprocessingservice.unit.integration;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
+import com.codechallenge.loginprocessingservice.integration.CustomerTrackingClient;
+import com.github.tomakehurst.wiremock.client.BasicCredentials;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import org.springframework.web.client.ResourceAccessException;
@@ -69,7 +71,7 @@ class CustomerTrackingClientTest {
         verify(
                 1,
                 getRequestedFor(urlEqualTo(TRACK_LOGIN_PATH + customerId))
-                        .withBasicAuth(new com.github.tomakehurst.wiremock.client.BasicCredentials(username, password))
+                        .withBasicAuth(new BasicCredentials(username, password))
         );
     }
 
@@ -84,10 +86,7 @@ class CustomerTrackingClientTest {
 
         assertThrows(Exception.class, () -> client.notifyLogin(customerId));
 
-        verify(
-                1,
-                getRequestedFor(urlEqualTo(TRACK_LOGIN_PATH + customerId))
-        );
+        verify(1, getRequestedFor(urlEqualTo(TRACK_LOGIN_PATH + customerId)));
     }
 
     @Test
@@ -104,7 +103,7 @@ class CustomerTrackingClientTest {
         verify(
                 1,
                 getRequestedFor(urlEqualTo(TRACK_LOGIN_PATH + customerId))
-                        .withBasicAuth(new com.github.tomakehurst.wiremock.client.BasicCredentials(username, password))
+                        .withBasicAuth(new BasicCredentials(username, password))
         );
     }
 

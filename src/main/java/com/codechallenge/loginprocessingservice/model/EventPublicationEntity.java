@@ -27,7 +27,7 @@ import java.util.UUID;
         },
         schema = "login_processing"
 )
-public class OutboxEventEntity {
+public class EventPublicationEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -42,7 +42,7 @@ public class OutboxEventEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 64)
-    private OutboxEventType eventType;
+    private IntegrationEventType eventType;
 
     @Column(nullable = false)
     private String topic;
@@ -56,7 +56,7 @@ public class OutboxEventEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
-    private OutboxStatus status;
+    private PublicationStatus status;
 
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount = 0;
@@ -102,11 +102,11 @@ public class OutboxEventEntity {
         this.aggregateId = aggregateId;
     }
 
-    public OutboxEventType getEventType() {
+    public IntegrationEventType getEventType() {
         return eventType;
     }
 
-    public void setEventType(OutboxEventType eventType) {
+    public void setEventType(IntegrationEventType eventType) {
         this.eventType = eventType;
     }
 
@@ -134,11 +134,11 @@ public class OutboxEventEntity {
         this.payload = payload;
     }
 
-    public OutboxStatus getStatus() {
+    public PublicationStatus getStatus() {
         return status;
     }
 
-    public void setStatus(OutboxStatus status) {
+    public void setStatus(PublicationStatus status) {
         this.status = status;
     }
 
@@ -190,28 +190,28 @@ public class OutboxEventEntity {
         this.sentAt = sentAt;
     }
 
-    public static OutboxEventEntity newEvent(
+    public static EventPublicationEntity newEvent(
             AggregateType aggregateType,
             UUID aggregateId,
-            OutboxEventType eventType,
+            IntegrationEventType eventType,
             String topic,
             String key,
             byte[] payload
     ) {
-        OutboxEventEntity e = new OutboxEventEntity();
+        EventPublicationEntity e = new EventPublicationEntity();
         e.aggregateType = aggregateType;
         e.aggregateId = aggregateId;
         e.eventType = eventType;
         e.topic = topic;
         e.key = key;
         e.payload = payload;
-        e.status = OutboxStatus.NEW;
+        e.status = PublicationStatus.NEW;
         e.retryCount = 0;
         return e;
     }
 
     public void markSent() {
-        this.status = OutboxStatus.SENT;
+        this.status = PublicationStatus.SENT;
         this.sentAt = Instant.now();
         this.lastAttemptAt = this.sentAt;
         this.lastError = null;
@@ -224,7 +224,7 @@ public class OutboxEventEntity {
     }
 
     public void markFailedPermanently(String error) {
-        this.status = OutboxStatus.FAILED;
+        this.status = PublicationStatus.FAILED;
         this.lastAttemptAt = Instant.now();
         this.lastError = error;
     }
@@ -232,7 +232,7 @@ public class OutboxEventEntity {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof OutboxEventEntity that)) return false;
+        if (!(o instanceof EventPublicationEntity that)) return false;
         return Objects.equals(id, that.id);
     }
 

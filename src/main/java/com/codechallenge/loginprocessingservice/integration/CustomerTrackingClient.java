@@ -22,14 +22,14 @@ public class CustomerTrackingClient {
     }
 
     public boolean notifyLogin(UUID customerId) {
-        logger.debug("Sending login tracking request for customerId={}", customerId);
+        logger.info("[DEBUG_LOG] Sending login tracking request for customerId={} to URL: {}", customerId, TRACK_LOGIN_PATH);
 
         restClient.get()
                 .uri(TRACK_LOGIN_PATH, customerId)
                 .retrieve()
                 .toBodilessEntity();
 
-        logger.debug("Login tracking request successful for customerId={}", customerId);
+        logger.info("[DEBUG_LOG] Login tracking request successful for customerId={}", customerId);
         return true;
     }
 }
