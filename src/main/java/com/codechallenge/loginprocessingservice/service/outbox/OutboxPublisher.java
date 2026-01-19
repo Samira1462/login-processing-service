@@ -1,8 +1,8 @@
-package com.codechallenge.loginprocessingservice.kafka.outbox;
+package com.codechallenge.loginprocessingservice.service.outbox;
 
-import com.codechallenge.loginprocessingservice.persistence.model.OutboxEventEntity;
-import com.codechallenge.loginprocessingservice.persistence.model.OutboxStatus;
-import com.codechallenge.loginprocessingservice.persistence.repository.OutboxEventRepository;
+import com.codechallenge.loginprocessingservice.model.OutboxEventEntity;
+import com.codechallenge.loginprocessingservice.model.OutboxStatus;
+import com.codechallenge.loginprocessingservice.repository.OutboxEventRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,6 @@ public class OutboxPublisher {
 
     /**
      * Reads NEW outbox events, publishes to Kafka, and updates status.
-     *
      * Transactional:
      * - status updates are committed even if Kafka send fails for some rows
      * - next poll will pick remaining NEW/FAILED rows based on your strategy

@@ -1,4 +1,4 @@
-package com.codechallenge.loginprocessingservice.persistence.model;
+package com.codechallenge.loginprocessingservice.model;
 
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -33,7 +33,7 @@ public class LoginTrackingResultEntity {
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false)
     private String username;
 
     @Enumerated(EnumType.STRING)
@@ -53,26 +53,6 @@ public class LoginTrackingResultEntity {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-
-    public static LoginTrackingResultEntity of(
-            UUID messageId,
-            UUID customerId,
-            String username,
-            Client client,
-            Instant eventTimestamp,
-            String customerIp,
-            RequestResult requestResult
-    ) {
-        LoginTrackingResultEntity e = new LoginTrackingResultEntity();
-        e.messageId = messageId;
-        e.customerId = customerId;
-        e.username = username;
-        e.client = client;
-        e.eventTimestamp = eventTimestamp;
-        e.customerIp = customerIp;
-        e.requestResult = requestResult;
-        return e;
-    }
 
     public UUID getId() {
         return id;

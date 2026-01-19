@@ -1,4 +1,4 @@
-package com.codechallenge.loginprocessingservice.persistence.model;
+package com.codechallenge.loginprocessingservice.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;

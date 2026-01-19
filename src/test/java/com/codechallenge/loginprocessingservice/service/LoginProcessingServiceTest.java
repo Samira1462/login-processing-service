@@ -2,9 +2,9 @@ package com.codechallenge.loginprocessingservice.service;
 
 import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
 import com.codechallenge.loginprocessingservice.integration.CustomerTrackingClient;
-import com.codechallenge.loginprocessingservice.persistence.model.*;
-import com.codechallenge.loginprocessingservice.persistence.repository.LoginTrackingResultRepository;
-import com.codechallenge.loginprocessingservice.persistence.repository.OutboxEventRepository;
+import com.codechallenge.loginprocessingservice.model.*;
+import com.codechallenge.loginprocessingservice.repository.LoginTrackingResultRepository;
+import com.codechallenge.loginprocessingservice.repository.OutboxEventRepository;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.codechallenge.loginprocessingservice.mapper.LoginTrackingResultMapper.toEntity;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -65,9 +66,7 @@ class LoginProcessingServiceTest {
                 customerId, "samira", "web", ts, messageId, "10.0.0.1"
         );
 
-        LoginTrackingResultEntity existing = LoginTrackingResultEntity.of(
-                messageId, customerId, "samira", Client.WEB, ts, "10.0.0.1", RequestResult.SUCCESSFUL
-        );
+        LoginTrackingResultEntity existing = toEntity(in, RequestResult.SUCCESSFUL);
 
         when(resultRepository.findByMessageId(messageId)).thenReturn(Optional.of(existing));
 
@@ -175,9 +174,7 @@ class LoginProcessingServiceTest {
 
         CustomerLoginEvent in = new CustomerLoginEvent(customerId, "u", "web", ts, messageId, "10.0.0.1");
 
-        LoginTrackingResultEntity existing = LoginTrackingResultEntity.of(
-                messageId, customerId, "u", Client.WEB, ts, "10.0.0.1", RequestResult.SUCCESSFUL
-        );
+        LoginTrackingResultEntity existing = toEntity(in, RequestResult.SUCCESSFUL);
 
         when(resultRepository.findByMessageId(messageId))
                 .thenReturn(Optional.empty())

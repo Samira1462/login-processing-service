@@ -55,7 +55,6 @@ spring:
         spring.json.trusted.packages: "com.codechallenge.loginprocessingservice"
         spring.json.value.default.type: "com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent"
 
-    # OutboxPublisher باید byte[] منتشر کنه
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer

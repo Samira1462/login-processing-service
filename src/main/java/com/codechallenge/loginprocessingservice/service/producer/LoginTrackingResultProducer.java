@@ -1,4 +1,4 @@
-package com.codechallenge.loginprocessingservice.kafka.producer;
+/*package com.codechallenge.loginprocessingservice.kafka.producer;
 
 
 import com.codechallenge.loginprocessingservice.dto.LoginTrackingResultEvent;
@@ -19,4 +19,4 @@ public class LoginTrackingResultProducer {
     public void publish(LoginTrackingResultEvent event) {
         kafkaTemplate.send(event.customerId().toString(), event);
     }
-}
+}*/

@@ -3,9 +3,9 @@ package com.codechallenge.loginprocessingservice.service;
 import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
 import com.codechallenge.loginprocessingservice.dto.LoginTrackingResultEvent;
 import com.codechallenge.loginprocessingservice.integration.CustomerTrackingClient;
-import com.codechallenge.loginprocessingservice.persistence.model.*;
-import com.codechallenge.loginprocessingservice.persistence.repository.LoginTrackingResultRepository;
-import com.codechallenge.loginprocessingservice.persistence.repository.OutboxEventRepository;
+import com.codechallenge.loginprocessingservice.model.*;
+import com.codechallenge.loginprocessingservice.repository.LoginTrackingResultRepository;
+import com.codechallenge.loginprocessingservice.repository.OutboxEventRepository;
 import io.github.resilience4j.retry.Retry;
 
 import io.github.resilience4j.retry.RetryRegistry;
@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.function.Supplier;
 
-import static com.codechallenge.loginprocessingservice.mapper.ClientMapper.toClient;
+import static com.codechallenge.loginprocessingservice.mapper.LoginTrackingResultMapper.toEntity;
 import static com.codechallenge.loginprocessingservice.mapper.LoginTrackingResultMapper.toEvent;
 
 @Service
@@ -84,15 +84,7 @@ public class LoginProcessingService {
 
     private LoginTrackingResultEntity persistResult(CustomerLoginEvent event, RequestResult requestResult) {
         try {
-            LoginTrackingResultEntity entity = LoginTrackingResultEntity.of(
-                    event.messageId(),
-                    event.customerId(),
-                    event.username(),
-                    toClient(event.client()),
-                    event.timestamp(),
-                    event.customerIp(),
-                    requestResult
-            );
+            LoginTrackingResultEntity entity = toEntity(event, requestResult);
 
             return resultRepository.save(entity);
 

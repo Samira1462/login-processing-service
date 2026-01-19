@@ -2,13 +2,14 @@ package com.codechallenge.loginprocessingservice.integrationtest;
 
 import com.codechallenge.loginprocessingservice.AbstractTest;
 import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
-import com.codechallenge.loginprocessingservice.persistence.model.OutboxStatus;
-import com.codechallenge.loginprocessingservice.persistence.model.RequestResult;
-import com.codechallenge.loginprocessingservice.persistence.repository.LoginTrackingResultRepository;
-import com.codechallenge.loginprocessingservice.persistence.repository.OutboxEventRepository;
+import com.codechallenge.loginprocessingservice.model.OutboxStatus;
+import com.codechallenge.loginprocessingservice.model.RequestResult;
+import com.codechallenge.loginprocessingservice.repository.LoginTrackingResultRepository;
+import com.codechallenge.loginprocessingservice.repository.OutboxEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import java.time.Instant;
@@ -19,9 +20,10 @@ import static org.awaitility.Awaitility.await;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 
+@Import(KafkaTestProducerConfig.class)
 public class LoginProcessingFlowTest extends AbstractTest {
 
-    @Autowired KafkaTemplate<String, Object> kafkaTemplate;
+    @Autowired KafkaTemplate<String, CustomerLoginEvent> customerLoginKafkaTemplate;
     @Autowired LoginTrackingResultRepository resultRepository;
     @Autowired OutboxEventRepository outboxRepository;
 
@@ -49,9 +51,8 @@ public class LoginProcessingFlowTest extends AbstractTest {
                 "10.0.0.1"
         );
 
-        kafkaTemplate.send("customer-login", customerId.toString(), in);
+        customerLoginKafkaTemplate.send("customer-login", customerId.toString(), in);
 
-        // چون consumer async است، منتظر می‌مانیم تا DB پر شود
         await().atMost(10, SECONDS).untilAsserted(() -> {
             var saved = resultRepository.findByMessageId(messageId).orElseThrow();
             assertEquals(customerId, saved.getCustomerId());

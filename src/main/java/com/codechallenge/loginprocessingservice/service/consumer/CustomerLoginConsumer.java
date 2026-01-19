@@ -1,4 +1,4 @@
-package com.codechallenge.loginprocessingservice.kafka.consumer;
+package com.codechallenge.loginprocessingservice.service.consumer;
 
 import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
 import com.codechallenge.loginprocessingservice.service.LoginProcessingService;

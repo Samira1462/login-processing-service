@@ -1,6 +1,6 @@
 package com.codechallenge.loginprocessingservice.mapper;
 
-import com.codechallenge.loginprocessingservice.persistence.model.Client;
+import com.codechallenge.loginprocessingservice.model.Client;
 
 public final class ClientMapper {
 

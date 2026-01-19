@@ -1,7 +1,7 @@
-package com.codechallenge.loginprocessingservice.persistence.repository;
+package com.codechallenge.loginprocessingservice.repository;
 
-import com.codechallenge.loginprocessingservice.persistence.model.OutboxEventEntity;
-import com.codechallenge.loginprocessingservice.persistence.model.OutboxStatus;
+import com.codechallenge.loginprocessingservice.model.OutboxEventEntity;
+import com.codechallenge.loginprocessingservice.model.OutboxStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.domain.Pageable;

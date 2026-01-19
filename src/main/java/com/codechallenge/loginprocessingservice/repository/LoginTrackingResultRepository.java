@@ -1,6 +1,6 @@
-package com.codechallenge.loginprocessingservice.persistence.repository;
+package com.codechallenge.loginprocessingservice.repository;
 
-import com.codechallenge.loginprocessingservice.persistence.model.LoginTrackingResultEntity;
+import com.codechallenge.loginprocessingservice.model.LoginTrackingResultEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
