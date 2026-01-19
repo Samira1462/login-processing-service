@@ -1,30 +1,67 @@
 package com.codechallenge.loginprocessingservice;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 import org.wiremock.integrations.testcontainers.WireMockContainer;
 
-import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest(webEnvironment = RANDOM_PORT)
-@Import(ContainersConfig.class)
+@Testcontainers
+@SpringBootTest
 public abstract class AbstractTest {
 
-    @LocalServerPort
-    public int port;
+    @Container
+    protected static final WireMockContainer wireMockContainer =
+            new WireMockContainer("wiremock/wiremock:3.6.0");
 
-    protected static WireMockContainer wireMockContainer = new WireMockContainer("wiremock/wiremock:latest")
-            .withExposedPorts(8080);
+    @Container
+    protected static final KafkaContainer kafkaContainer =
+            new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.0"));
 
-    static {
-        wireMockContainer.start();
+    @Container
+    protected static final PostgreSQLContainer<?> postgresContainer =
+            new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
+                    .withDatabaseName("login_processing_db")
+                    .withUsername("login_processing_user")
+                    .withPassword("login_processing_password");
+
+    @BeforeAll
+    static void containersAreUp() {
+        assertTrue(wireMockContainer.isRunning(), "WireMockContainer is not running");
+        assertTrue(kafkaContainer.isRunning(), "KafkaContainer is not running");
+        assertTrue(postgresContainer.isRunning(), "PostgresContainer is not running");
+
+        System.out.println("WireMock:  " + wireMockContainer.getBaseUrl());
+        System.out.println("Kafka:     " + kafkaContainer.getBootstrapServers());
+        System.out.println("Postgres:  " + postgresContainer.getJdbcUrl());
     }
 
     @DynamicPropertySource
-    static void configureWireMock(DynamicPropertyRegistry registry) {
-        registry.add("wiremock.base-url", () -> wireMockContainer.getBaseUrl());
+    static void dynamicProps(DynamicPropertyRegistry registry) {
+
+        registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+        registry.add("spring.datasource.username", postgresContainer::getUsername);
+        registry.add("spring.datasource.password", postgresContainer::getPassword);
+
+        registry.add("spring.kafka.bootstrap-servers", kafkaContainer::getBootstrapServers);
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
+
+        registry.add("app.customer-tracking.base-url", wireMockContainer::getBaseUrl);
+        registry.add("app.customer-tracking.username", () -> "tracking_user");
+        registry.add("app.customer-tracking.password", () -> "");
+
+        registry.add("app.kafka.topic.input", () -> "customer-login");
+        registry.add("app.kafka.topic.output", () -> "login-tracking-result");
+
+        registry.add("app.outbox.poll-ms", () -> "999999");
+
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
     }
 }

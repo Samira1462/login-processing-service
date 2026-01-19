@@ -1,12 +1,11 @@
 server:
   address: ${APP_HOST:0.0.0.0}
   port: ${APP_PORT:8080}
+
 spring:
   main:
     banner-mode: OFF
-  sql:
-    init:
-      mode: never
+
   jackson:
     time-zone: UTC
 
@@ -16,10 +15,6 @@ spring:
     password: ${DATABASE_PASSWORD:login_processing_password}
     url: jdbc:postgresql://${POSTGRESQL_HOST:localhost}:${POSTGRESQL_PORT:5432}/${DATABASE_NAME:login_processing_db}
     driver-class-name: org.postgresql.Driver
-  data:
-    jpa:
-      repositories:
-        enabled: true
 
   # ================== JPA ==================
   jpa:
@@ -30,43 +25,14 @@ spring:
     hibernate:
       ddl-auto: validate
     properties:
+      hibernate:
+        format_sql: true
       javax:
         persistence:
           create-database-schemas: true
-      hibernate:
-        generate_statistics: true
-        format_sql: true
-      naming-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
       default_schema: ${DATABASE_SCHEMA:login_processing}
-      properties:
-        hibernate:
-          jdbc:
-            time_zone: UTC
-  kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
-    consumer:
-      group-id: login-processing-service
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "com.codechallenge"
-        spring.json.value.default.type: "com.codechallenge.messaging.CustomerLoginEvent"
-
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-
-
-# ================== LOGGING ==================
-logging:
-  level:
-    root: INFO
-    org.flywaydb: INFO
-    org.apache.kafka: INFO
-
-# ================== FLYWAY ==================
+  # ================== FLYWAY ==================
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -76,6 +42,29 @@ logging:
     validate-on-migrate: true
     clean-disabled: true
 
+  # ================== KAFKA ==================
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: login-processing-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.codechallenge.loginprocessingservice"
+        spring.json.value.default.type: "com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent"
+
+    # OutboxPublisher باید byte[] منتشر کنه
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      acks: all
+      retries: 3
+
+    listener:
+      ack-mode: manual
+
 # ================== APP CONFIG ==================
 app:
   kafka:
@@ -83,18 +72,44 @@ app:
       input: customer-login
       output: login-tracking-result
 
-  tracking:
-    base-url: https://customer-tracking-service
-    username: tracking_user
-    password: tracking_password
+  customer-tracking:
+    base-url: ${CUSTOMER_TRACKING_BASE_URL:https://customer-tracking-service}
+    username: ${CUSTOMER_TRACKING_USERNAME:tracking_user}
+    password: ${CUSTOMER_TRACKING_PASSWORD:tracking_password}
 
-  # ================== RESILIENCE4J ==================
-  resilience4j:
-    retry:
-      instances:
-        trackingClient:
-          max-attempts: 3
-          wait-duration: 200ms
-          retry-exceptions:
-            - org.springframework.web.reactive.function.client.WebClientResponseException
-            - java.io.IOException
+  outbox:
+    poll-ms: 500
+    batch-size: 50
+    max-retries: 10
+
+# ================== RESILIENCE4J ==================
+resilience4j:
+  retry:
+    instances:
+      customerTracking:
+        max-attempts: 3
+        wait-duration: 200ms
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.RestClientResponseException
+          - org.springframework.web.client.RestClientException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+
+# ================== LOGGING ==================
+logging:
+  level:
+    root: INFO
+    org.flywaydb: INFO
+    org.apache.kafka: INFO
+    io.github.resilience4j.retry: INFO
+
+# ================== ACTUATOR ==================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
