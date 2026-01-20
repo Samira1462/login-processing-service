@@ -85,7 +85,7 @@ The service calls the following endpoint of customer-tracking-service:
 
 This project uses PostgreSQL.
 
-###Migrations (Flyway)
+### Migrations (Flyway)
 
 Flyway is enabled and runs migrations from:
 
