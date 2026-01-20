@@ -1,4 +1,3 @@
-docker run --rm confluentinc/cp-kafka:7.6.1 bash -lc "kafka-storage random-uuid"
 
 # login-processing-service
 
@@ -8,7 +7,6 @@ A Spring Boot service that processes customer login events by:
 - persisting the login tracking result in a database
 - publishing the result to a Kafka output topic (via the Outbox pattern)
 
-> Note: As stated in the challenge, the Kafka topics and the REST API target are examples/dummy. The minimum expectation is that the application is correctly targeted to those topic names and endpoint URL, even if no real external system exists.
 
 ## Features
 
