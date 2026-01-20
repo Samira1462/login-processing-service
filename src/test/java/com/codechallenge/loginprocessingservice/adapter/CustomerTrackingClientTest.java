@@ -1,8 +1,6 @@
-package com.codechallenge.loginprocessingservice.unit.integration;
+package com.codechallenge.loginprocessingservice.adapter;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-
-import com.codechallenge.loginprocessingservice.integration.CustomerTrackingClient;
 import com.github.tomakehurst.wiremock.client.BasicCredentials;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;

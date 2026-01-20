@@ -17,11 +17,22 @@ app:
     batch-size: 20
     max-retries: 3
 
+resilience4j:
+  retry:
+    instances:
+      customerTracking:
+        max-attempts: 4
+        wait-duration: 50ms
+        retry-exceptions:
+          - org.springframework.web.client.RestClientResponseException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.HttpClientErrorException
+
 logging:
   level:
     root: INFO
-    com.codechallenge.loginprocessingservice: DEBUG
+    com.codechallenge.loginprocessingservice: INFO
     org.apache.kafka: WARN
-    org.springframework.kafka: INFO
-    org.springframework.test.context: INFO
-    io.github.resilience4j.retry: WARN
+    org.springframework.kafka: WARN
+    io.github.resilience4j: INFO

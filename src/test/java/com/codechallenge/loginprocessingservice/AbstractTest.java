@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -16,9 +17,10 @@ import org.wiremock.integrations.testcontainers.WireMockContainer;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@SpringBootTest
 @ActiveProfiles("it")
 @Testcontainers
-@SpringBootTest
 public abstract class AbstractTest {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractTest.class.getName());

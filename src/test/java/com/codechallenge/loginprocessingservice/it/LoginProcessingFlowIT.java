@@ -6,7 +6,8 @@ import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
 import com.codechallenge.loginprocessingservice.model.PublicationStatus;
 import com.codechallenge.loginprocessingservice.model.RequestResult;
 import com.codechallenge.loginprocessingservice.repository.LoginTrackingResultRepository;
-import com.codechallenge.loginprocessingservice.repository.EventPublicationRepository;
+import com.codechallenge.loginprocessingservice.repository.OutboxRepository;
+import com.codechallenge.loginprocessingservice.service.LoginProcessingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,32 +16,38 @@ import org.springframework.kafka.core.KafkaTemplate;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.awaitility.Awaitility.await;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Import(KafkaTestProducerConfig.class)
-public class LoginProcessingFlowTest extends AbstractTest {
+public class LoginProcessingFlowIT extends AbstractTest {
 
     @Autowired
-    KafkaTemplate<String, CustomerLoginEvent> customerLoginKafkaTemplate;
+    private KafkaTemplate<String, CustomerLoginEvent> customerLoginKafkaTemplate;
+
     @Autowired
-    LoginTrackingResultRepository resultRepository;
+    private LoginTrackingResultRepository resultRepository;
+
     @Autowired
-    EventPublicationRepository outboxRepository;
+    private OutboxRepository outboxRepository;
+
+    @Autowired
+    private LoginProcessingServiceImpl processingService;
 
     @BeforeEach
     void setUp() {
         configureFor(wireMockContainer.getHost(), wireMockContainer.getFirstMappedPort());
+        outboxRepository.deleteAll();
+        resultRepository.deleteAll();
     }
 
     @Test
-    void shouldProcessEventOnlyOnce_whenSameMessageIdIsReceivedTwice() {
+    void shouldProcessEventOnlyOnce_whenSameMessageIdIsReceived() {
         UUID customerId = UUID.randomUUID();
         UUID messageId = UUID.randomUUID();
 
@@ -210,5 +217,101 @@ public class LoginProcessingFlowTest extends AbstractTest {
         verify(lessThanOrExactly(2), getRequestedFor(urlEqualTo("/v1/api/trackLoging/" + customerId)));
     }
 
+    @Test
+    void shouldNotRetry_on4xx_andPersistUnsuccessful() {
+        UUID customerId = UUID.randomUUID();
+        UUID messageId = UUID.randomUUID();
 
+        stubFor(get(urlEqualTo("/v1/api/trackLoging/" + customerId))
+                .willReturn(aResponse().withStatus(400)));
+
+        CustomerLoginEvent in = new CustomerLoginEvent(
+                customerId, "Samira", "web", Instant.now(), messageId, "10.0.0.1"
+        );
+
+        customerLoginKafkaTemplate.send("customer-login", customerId.toString(), in);
+
+        await().atMost(15, SECONDS).untilAsserted(() -> {
+            var saved = resultRepository.findByMessageId(messageId).orElseThrow();
+            assertEquals(RequestResult.UNSUCCESSFUL, saved.getRequestResult());
+
+            assertEquals(1L, outboxRepository.count());
+        });
+
+        verify(1, getRequestedFor(urlEqualTo("/v1/api/trackLoging/" + customerId)));
+    }
+
+    @Test
+    void shouldBeIdempotent_atDatabaseLevel_whenProcessIsCalledConcurrently() throws Exception {
+        UUID customerId = UUID.randomUUID();
+        UUID messageId = UUID.randomUUID();
+
+        stubFor(get(urlEqualTo("/v1/api/trackLoging/" + customerId))
+                .willReturn(aResponse().withStatus(204).withFixedDelay(200)));
+
+        CustomerLoginEvent in = new CustomerLoginEvent(
+                customerId, "Samira", "web", Instant.now(), messageId, "10.0.0.1"
+        );
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        Future<?> f1 = pool.submit(() -> processingService.process(in));
+        Future<?> f2 = pool.submit(() -> processingService.process(in));
+
+        f1.get(5, TimeUnit.SECONDS);
+        f2.get(5, TimeUnit.SECONDS);
+        pool.shutdown();
+
+        await().atMost(10, SECONDS).untilAsserted(() -> {
+            long results = resultRepository.findAll().stream()
+                    .filter(r -> messageId.equals(r.getMessageId()))
+                    .count();
+            assertEquals(1L, results);
+
+            long outboxNew = outboxRepository.findAll().stream()
+                    .filter(o -> o.getStatus() == PublicationStatus.NEW)
+                    .count();
+            assertEquals(1L, outboxNew);
+        });
+
+        verify(moreThanOrExactly(1), getRequestedFor(urlEqualTo("/v1/api/trackLoging/" + customerId)));
+        verify(lessThanOrExactly(2), getRequestedFor(urlEqualTo("/v1/api/trackLoging/" + customerId)));
+    }
+
+    @Test
+    void shouldRetry_on5xx_andEventuallySucceed() {
+        UUID customerId = UUID.randomUUID();
+        UUID messageId = UUID.randomUUID();
+
+        stubFor(get(urlEqualTo("/v1/api/trackLoging/" + customerId))
+                .inScenario("retry")
+                .whenScenarioStateIs(STARTED)
+                .willSetStateTo("second")
+                .willReturn(aResponse().withStatus(500)));
+
+        stubFor(get(urlEqualTo("/v1/api/trackLoging/" + customerId))
+                .inScenario("retry")
+                .whenScenarioStateIs("second")
+                .willSetStateTo("third")
+                .willReturn(aResponse().withStatus(500)));
+
+        stubFor(get(urlEqualTo("/v1/api/trackLoging/" + customerId))
+                .inScenario("retry")
+                .whenScenarioStateIs("third")
+                .willReturn(aResponse().withStatus(204)));
+
+        CustomerLoginEvent in = new CustomerLoginEvent(
+                customerId, "Samira", "web", Instant.now(), messageId, "10.0.0.1"
+        );
+
+        customerLoginKafkaTemplate.send("customer-login", customerId.toString(), in);
+
+        await().atMost(15, SECONDS)
+                .until(() -> resultRepository.findByMessageId(messageId).isPresent());
+
+        var saved = resultRepository.findByMessageId(messageId).orElseThrow();
+        assertEquals(RequestResult.SUCCESSFUL, saved.getRequestResult());
+
+
+        verify(3, getRequestedFor(urlEqualTo("/v1/api/trackLoging/" + customerId)));
+    }
 }

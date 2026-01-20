@@ -81,13 +81,14 @@ app:
     poll-ms: 500
     batch-size: 50
     max-retries: 10
+    retry-backoff-ms: 1000
 
 # ================== RESILIENCE4J ==================
 resilience4j:
   retry:
     instances:
       customerTracking:
-        max-attempts: 3
+        max-attempts: 4
         wait-duration: 200ms
         retry-exceptions:
           - org.springframework.web.client.ResourceAccessException

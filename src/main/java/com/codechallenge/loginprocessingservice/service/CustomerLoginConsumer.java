@@ -1,7 +1,6 @@
-package com.codechallenge.loginprocessingservice.service.consumer;
+package com.codechallenge.loginprocessingservice.service;
 
 import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
-import com.codechallenge.loginprocessingservice.service.LoginProcessingService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +15,9 @@ public class CustomerLoginConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(CustomerLoginConsumer.class);
 
-    private final LoginProcessingService processingService;
+    private final LoginProcessingServiceImpl processingService;
 
-    public CustomerLoginConsumer(LoginProcessingService processingService) {
+    public CustomerLoginConsumer(LoginProcessingServiceImpl processingService) {
         this.processingService = processingService;
     }
 

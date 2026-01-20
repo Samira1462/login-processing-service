@@ -12,13 +12,12 @@ import io.github.resilience4j.retry.RetryRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
 import java.util.function.Supplier;
 
-import static com.codechallenge.loginprocessingservice.mapper.LoginTrackingResultMapper.toEntity;
 import static com.codechallenge.loginprocessingservice.mapper.LoginTrackingResultMapper.toEvent;
 
 @Service
@@ -85,7 +84,7 @@ public class LoginProcessingServiceImpl implements LoginProcessingService{
         }
     }
 
-    private LoginTrackingResultEntity persistResult(CustomerLoginEvent event, RequestResult requestResult) {
+/*    private LoginTrackingResultEntity persistResult(CustomerLoginEvent event, RequestResult requestResult) {
         try {
             LoginTrackingResultEntity entity = toEntity(event, requestResult);
 
@@ -97,9 +96,41 @@ public class LoginProcessingServiceImpl implements LoginProcessingService{
             return resultRepository.findByMessageId(event.messageId())
                     .orElseThrow(() -> dup);
         }
+    }*/
+
+    private LoginTrackingResultEntity persistResult(CustomerLoginEvent event, RequestResult requestResult) {
+
+        String client = Client.fromString(event.client()).name();
+
+        resultRepository.insertIgnore(
+                UUID.randomUUID(),
+                event.messageId(),
+                event.customerId(),
+                event.username(),
+                client,
+                event.timestamp(),
+                event.customerIp(),
+                requestResult.name()
+        );
+
+        return resultRepository.findByMessageId(event.messageId()).orElseThrow();
     }
 
     private void writeOutbox(LoginTrackingResultEntity saved) {
+        LoginTrackingResultEvent outEvent = toEvent(saved);
+        byte[] payload = payloadSerializer.serialize(outEvent);
+
+        outboxRepository.insertIgnore(
+                UUID.randomUUID(),
+                AggregateType.LOGIN_TRACKING_RESULT.name(),
+                saved.getId(),
+                IntegrationEventType.LOGIN_TRACKING_RESULT_CREATED.name(),
+                outputTopic,
+                saved.getCustomerId().toString(),
+                payload
+        );
+    }
+/*    private void writeOutbox(LoginTrackingResultEntity saved) {
         LoginTrackingResultEvent outEvent = toEvent(saved);
         byte[] payload = payloadSerializer.serialize(outEvent);
 
@@ -118,6 +149,6 @@ public class LoginProcessingServiceImpl implements LoginProcessingService{
             logger.info("Outbox duplicate ignored. aggregateId={} eventType={}",
                     saved.getId(), IntegrationEventType.LOGIN_TRACKING_RESULT_CREATED);
         }
-    }
+    }*/
 
 }

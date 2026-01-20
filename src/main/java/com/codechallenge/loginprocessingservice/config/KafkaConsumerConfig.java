@@ -26,7 +26,7 @@ public class KafkaConsumerConfig {
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.codechallenge.loginprocessingservice");
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent");
 
-        ConsumerFactory<String, CustomerLoginEvent> cf =
+        ConsumerFactory<String, CustomerLoginEvent> consumerFactory =
                 new DefaultKafkaConsumerFactory<>(
                         props,
                         new StringDeserializer(),
@@ -34,7 +34,7 @@ public class KafkaConsumerConfig {
                 );
 
         var factory = new ConcurrentKafkaListenerContainerFactory<String, CustomerLoginEvent>();
-        factory.setConsumerFactory(cf);
+        factory.setConsumerFactory(consumerFactory);
 
 
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);

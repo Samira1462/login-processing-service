@@ -1,4 +1,4 @@
-package com.codechallenge.loginprocessingservice.integration;
+package com.codechallenge.loginprocessingservice.adapter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

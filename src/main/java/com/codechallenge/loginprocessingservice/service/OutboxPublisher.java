@@ -1,8 +1,8 @@
-package com.codechallenge.loginprocessingservice.service.outbox;
+package com.codechallenge.loginprocessingservice.service;
 
-import com.codechallenge.loginprocessingservice.model.EventPublicationEntity;
+import com.codechallenge.loginprocessingservice.model.OutboxEntity;
 import com.codechallenge.loginprocessingservice.model.PublicationStatus;
-import com.codechallenge.loginprocessingservice.repository.EventPublicationRepository;
+import com.codechallenge.loginprocessingservice.repository.OutboxRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,23 +14,24 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class EventPublicationProcessor {
+public class OutboxPublisher {
 
-    private static final Logger log = LoggerFactory.getLogger(EventPublicationProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
-    private final EventPublicationRepository outboxRepository;
+    private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, byte[]> kafkaTemplate;
 
     private final int batchSize;
     private final int maxRetries;
 
-    public EventPublicationProcessor(EventPublicationRepository outboxRepository,
-                                     KafkaTemplate<String, byte[]> kafkaTemplate,
-                                     @Value("${app.outbox.batch-size:50}") int batchSize,
-                                     @Value("${app.outbox.max-retries:10}") int maxRetries) {
+    public OutboxPublisher(OutboxRepository outboxRepository,
+                           KafkaTemplate<String, byte[]> kafkaTemplate,
+                           @Value("${app.outbox.batch-size:50}") int batchSize,
+                           @Value("${app.outbox.max-retries:10}") int maxRetries) {
         this.outboxRepository = outboxRepository;
         this.kafkaTemplate = kafkaTemplate;
         this.batchSize = batchSize;
@@ -46,7 +47,7 @@ public class EventPublicationProcessor {
     @Scheduled(fixedDelayString = "${app.outbox.poll-ms:500}")
     @Transactional
     public void publishBatch() {
-        List<EventPublicationEntity> batch =
+        List<OutboxEntity> batch =
                 outboxRepository.findByStatusOrderByCreatedAtAsc(
                         PublicationStatus.NEW,
                         PageRequest.of(0, batchSize)
@@ -58,12 +59,12 @@ public class EventPublicationProcessor {
 
         log.info("Publishing outbox batch size={}", batch.size());
 
-        for (EventPublicationEntity event : batch) {
+        for (OutboxEntity event : batch) {
             publishOne(event);
         }
     }
 
-    private void publishOne(EventPublicationEntity event) {
+    private void publishOne(OutboxEntity event) {
         try {
             event.setLastAttemptAt(Instant.now());
 
@@ -75,7 +76,9 @@ public class EventPublicationProcessor {
             log.debug("Outbox event sent id={} topic={} key={}", event.getId(), event.getTopic(), event.getKey());
 
         } catch (Exception ex) {
-            String msg = ex.getMessage();
+            log.error("Error publishing outbox event id={}", event.getId(), ex);
+            Throwable cause = (ex instanceof ExecutionException) ? ex.getCause() : ex;
+            String msg = cause != null ? cause.getMessage() : ex.getMessage();
             if (msg != null && msg.length() > 2000) {
                 msg = msg.substring(0, 2000);
             }

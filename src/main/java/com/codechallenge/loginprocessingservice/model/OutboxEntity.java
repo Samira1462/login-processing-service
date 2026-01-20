@@ -27,7 +27,7 @@ import java.util.UUID;
         },
         schema = "login_processing"
 )
-public class EventPublicationEntity {
+public class OutboxEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -190,7 +190,7 @@ public class EventPublicationEntity {
         this.sentAt = sentAt;
     }
 
-    public static EventPublicationEntity newEvent(
+    public static OutboxEntity newEvent(
             AggregateType aggregateType,
             UUID aggregateId,
             IntegrationEventType eventType,
@@ -198,7 +198,7 @@ public class EventPublicationEntity {
             String key,
             byte[] payload
     ) {
-        EventPublicationEntity e = new EventPublicationEntity();
+        OutboxEntity e = new OutboxEntity();
         e.aggregateType = aggregateType;
         e.aggregateId = aggregateId;
         e.eventType = eventType;
@@ -232,7 +232,7 @@ public class EventPublicationEntity {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof EventPublicationEntity that)) return false;
+        if (!(o instanceof OutboxEntity that)) return false;
         return Objects.equals(id, that.id);
     }
 
