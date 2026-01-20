@@ -1,12 +1,10 @@
-package com.codechallenge.loginprocessingservice.unit.service;
+package com.codechallenge.loginprocessingservice.service;
 
 import com.codechallenge.loginprocessingservice.dto.CustomerLoginEvent;
-import com.codechallenge.loginprocessingservice.integration.CustomerTrackingClient;
+import com.codechallenge.loginprocessingservice.adapter.CustomerTrackingClient;
 import com.codechallenge.loginprocessingservice.model.*;
 import com.codechallenge.loginprocessingservice.repository.LoginTrackingResultRepository;
-import com.codechallenge.loginprocessingservice.repository.EventPublicationRepository;
-import com.codechallenge.loginprocessingservice.service.LoginProcessingService;
-import com.codechallenge.loginprocessingservice.service.IntegrationEventSerializer;
+import com.codechallenge.loginprocessingservice.repository.OutboxRepository;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
@@ -25,20 +23,20 @@ import static com.codechallenge.loginprocessingservice.mapper.LoginTrackingResul
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class LoginProcessingServiceTest {
+class LoginProcessingServiceImplTest {
 
     @Mock
-    CustomerTrackingClient customerTrackingClient;
+    private CustomerTrackingClient customerTrackingClient;
     @Mock
-    LoginTrackingResultRepository resultRepository;
+    private LoginTrackingResultRepository resultRepository;
     @Mock
-    EventPublicationRepository outboxRepository;
+    private OutboxRepository outboxRepository;
     @Mock
-    IntegrationEventSerializer payloadSerializer;
+    private IntegrationEventSerializer payloadSerializer;
     @Mock
-    RetryRegistry retryRegistry;
+    private RetryRegistry retryRegistry;
 
-    LoginProcessingService service;
+    LoginProcessingServiceImpl service;
 
     @BeforeEach
     void setUp() {
@@ -52,7 +50,7 @@ class LoginProcessingServiceTest {
 
         when(retryRegistry.retry("customerTracking")).thenReturn(testRetry);
 
-        service = new LoginProcessingService(
+        service = new LoginProcessingServiceImpl(
                 customerTrackingClient,
                 resultRepository,
                 outboxRepository,
@@ -241,7 +239,7 @@ class LoginProcessingServiceTest {
 
         byte[] payload = "{\"ok\":true}".getBytes();
         when(payloadSerializer.serialize(any())).thenReturn(payload);
-        when(outboxRepository.save(any(EventPublicationEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxRepository.save(any(OutboxEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var out = service.process(in);
 
@@ -263,9 +261,9 @@ class LoginProcessingServiceTest {
         assertEquals("10.0.0.1", savedEntity.getCustomerIp());
         assertEquals(RequestResult.SUCCESSFUL, savedEntity.getRequestResult());
 
-        ArgumentCaptor<EventPublicationEntity> outboxCaptor = ArgumentCaptor.forClass(EventPublicationEntity.class);
+        ArgumentCaptor<OutboxEntity> outboxCaptor = ArgumentCaptor.forClass(OutboxEntity.class);
         verify(outboxRepository, times(1)).save(outboxCaptor.capture());
-        EventPublicationEntity ob = outboxCaptor.getValue();
+        OutboxEntity ob = outboxCaptor.getValue();
 
         assertEquals(AggregateType.LOGIN_TRACKING_RESULT, ob.getAggregateType());
         assertNotNull(savedEntity.getId());
@@ -305,7 +303,7 @@ class LoginProcessingServiceTest {
 
         when(payloadSerializer.serialize(any())).thenReturn("{}".getBytes());
 
-        when(outboxRepository.save(any(EventPublicationEntity.class)))
+        when(outboxRepository.save(any(OutboxEntity.class)))
                 .thenThrow(new DataIntegrityViolationException("dup outbox"));
 
         assertDoesNotThrow(() -> {
@@ -314,7 +312,7 @@ class LoginProcessingServiceTest {
         });
 
         verify(resultRepository, times(1)).save(any(LoginTrackingResultEntity.class));
-        verify(outboxRepository, times(1)).save(any(EventPublicationEntity.class));
+        verify(outboxRepository, times(1)).save(any(OutboxEntity.class));
     }
 
     @Test
@@ -346,7 +344,7 @@ class LoginProcessingServiceTest {
         });
 
         when(payloadSerializer.serialize(any())).thenReturn("{}".getBytes());
-        when(outboxRepository.save(any(EventPublicationEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxRepository.save(any(OutboxEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var out = service.process(in);
 
@@ -357,9 +355,6 @@ class LoginProcessingServiceTest {
         verify(resultRepository).save(entityCaptor.capture());
         assertEquals(RequestResult.UNSUCCESSFUL, entityCaptor.getValue().getRequestResult());
 
-        verify(outboxRepository, times(1)).save(any(EventPublicationEntity.class));
+        verify(outboxRepository, times(1)).save(any(OutboxEntity.class));
     }
-
-
-
 }
