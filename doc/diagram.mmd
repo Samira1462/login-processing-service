@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant K as Kafka (customer-login)
+    participant L as LoginProcessingService
+    participant R as CustomerTrackingService (REST)
+    participant DB as PostgreSQL
+    participant O as OutboxPublisher (scheduled)
+    participant K2 as Kafka (login-tracking-result)
+
+    K->>L: customer-login event (CustomerLoginEvent)
+
+%% Idempotency check on messageId
+    L->>DB: findByMessageId(messageId)
+    alt messageId already processed
+        DB-->>L: existing LoginTrackingResult
+        L-->>K: ACK (manual)
+    else first time for this messageId
+        DB-->>L: not found
+
+    %% External HTTP call with retry
+        note over L,R: External call with Resilience4j retry
+        L->>R: GET /v1/api/trackLoging/{customerId}
+        alt HTTP 2xx
+            R-->>L: 2xx OK
+            L->>L: requestResult = SUCCESSFUL
+        else HTTP 4xx (client error)
+            R-->>L: 4xx
+            L->>L: no retry\nrequestResult = UNSUCCESSFUL
+        else network/5xx error
+            R-->>L: exception
+            L->>L: retry up to max-attempts
+            L->>L: requestResult = UNSUCCESSFUL if all attempts fail
+        end
+
+    %% Transactional block: result + outbox
+        rect rgba(200,200,200,0.15)
+            note right of L: @Transactional\n(persist result + outbox)
+            L->>DB: INSERT login_tracking_result\n(UNIQUE message_id)
+            alt DB duplicate on message_id
+                DB-->>L: DataIntegrityViolationException
+                L->>DB: SELECT login_tracking_result\nWHERE message_id = ?
+                DB-->>L: existing LoginTrackingResult
+            else insert OK
+                DB-->>L: row inserted
+                L->>DB: INSERT outbox_event\n(status = NEW,\npayload = JSON bytes)
+                alt outbox duplicate\n(aggregate_type, aggregate_id, event_type)
+                    DB-->>L: DataIntegrityViolationException
+                    L->>L: ignore duplicate outbox row
+                else insert OK
+                    DB-->>L: row inserted
+                end
+            end
+        end
+
+    %% Manual Kafka ack after successful processing
+        L-->>K: ACK (manual)
+    end
+
+%% Outbox publisher loop
+    loop fixed delay (app.outbox.poll-ms)
+        O->>DB: SELECT outbox_event\nWHERE status = NEW\nORDER BY created_at ASC\nLIMIT batchSize
+        alt no NEW events
+            DB-->>O: []
+        else one or more events
+            DB-->>O: batch of NEW events
+            loop for each event
+                O->>K2: send(topic, key, payload)
+                alt publish success
+                    K2-->>O: send OK
+                    O->>DB: UPDATE outbox_event\nSET status = SENT,\nsent_at = now(),\nlast_attempt_at = now(),\nlast_error = null
+                else publish fail
+                    K2-->>O: error/timeout
+                    O->>DB: UPDATE outbox_event\nSET retry_count = retry_count + 1,\nlast_attempt_at = now(),\nlast_error = truncated message
+                    alt retry_count >= maxRetries
+                        O->>DB: UPDATE outbox_event\nSET status = FAILED
+                    end
+                end
+            end
+        end
+    end
